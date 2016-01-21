@@ -28,7 +28,7 @@ KERNEL_IMAGE=/boot/vmlinuz-${KERNEL_VERSION}
 RAMDISK_ARCHIVE=ramdisk.cpio
 #GEN_INIT_CPIO=$(dirname $0)/gen_init_cpio
 INITRD_DIR=initrd_content
-MODULES_LIST="virtio virtio_ring virtio_pci virtio_net virtio_net fscache 9pnet 9pnet_virtio 9p aufs"
+MODULES_LIST="virtio virtio_ring virtio_pci virtio_net virtio_net fscache 9pnet 9pnet_virtio 9p aufs overlay"
 QEMU_MEMORY="-m 1024"
 QEMU_KVM_ENABLE="-enable-kvm"
 #QEMU_OUTPUT="-vga cirrus -serial null"
@@ -88,9 +88,11 @@ function setup_initrd_content()
 
   for m in ${MODULES_LIST} ; do
     mf=$(find /lib/modules/${KERNEL_VERSION} -name ${m}.ko )
-    if [ -n ${mf} ] ; then
-      mkdir -p ${INITRD_DIR_ABS}/$(dirname ${mf})
-      cp -a ${mf} ${INITRD_DIR_ABS}/${mf#/}
+    if [ -n "${mf}" ] ; then
+      mkdir -p "${INITRD_DIR_ABS}/$(dirname ${mf})"
+      cp -a "${mf}" "${INITRD_DIR_ABS}/${mf#/}"
+    else
+      echo "Module ${m} not found"
     fi
   done
 
@@ -127,7 +129,17 @@ if [ -e /bin/resize ] ; then
 fi
 mount -t 9p -o ro,trans=virtio root /mnt/rootbase
 mount -t tmpfs overlay /mnt/overlay
-mount -n -t aufs -o dirs=/mnt/overlay=rw:/mnt/rootbase=ro unionfs ${rootmnt}
+mkdir -p /mnt/overlay/data
+
+if grep -q aufs /proc/filesystems ; then
+  echo "Using aufs to remap root"
+  mount -n -t aufs -o dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro unionfs ${rootmnt}
+else
+  echo "Using overlay to remap root"
+  mkdir -p /mnt/overlay/work
+  mount -n -t overlay -o upperdir=/mnt/overlay/data,workdir=/mnt/overlay/work,lowerdir=/mnt/rootbase overlay ${rootmnt}
+fi
+
 mount -n -o move /dev ${rootmnt}/dev
 mount -n -o move /sys ${rootmnt}/sys
 mount -n -o move /proc ${rootmnt}/proc
