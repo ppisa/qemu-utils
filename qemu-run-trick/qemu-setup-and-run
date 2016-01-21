@@ -240,6 +240,11 @@ function clean_setup()
   rm -rf ${RAMDISK_ARCHIVE} filelist ${INITRD_DIR_ABS}
 }
 
+if [ "$(whoami)" == "root" ] ; then
+  echo "$0: !!! TOO DANGEROUS TO RUN AS ROOT !!!"
+  exit 1;
+fi
+
 clean_setup || exit 1
 echo "=== setup_initrd_content ==="
 setup_initrd_content || exit 1
