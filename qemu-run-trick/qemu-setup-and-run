@@ -133,11 +133,11 @@ mkdir -p /mnt/overlay/data
 
 if grep -q aufs /proc/filesystems ; then
   echo "Using aufs to remap root"
-  mount -n -t aufs -o dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro unionfs ${rootmnt}
+  mount -n -t aufs -o dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro aufs-root ${rootmnt}
 else
   echo "Using overlay to remap root"
   mkdir -p /mnt/overlay/work
-  mount -n -t overlay -o upperdir=/mnt/overlay/data,workdir=/mnt/overlay/work,lowerdir=/mnt/rootbase overlay ${rootmnt}
+  mount -n -t overlay -o upperdir=/mnt/overlay/data,workdir=/mnt/overlay/work,lowerdir=/mnt/rootbase overlay-root ${rootmnt}
 fi
 
 mount -n -o move /dev ${rootmnt}/dev
