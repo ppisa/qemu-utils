@@ -127,13 +127,17 @@ if [ -e /bin/resize ] ; then
   rm -f /dev/tty
   mv /dev/tty-backup /dev/tty
 fi
-mount -t 9p -o ro,trans=virtio root /mnt/rootbase
+mount -t 9p -o ro,trans=virtio,version=9p2000.u root /mnt/rootbase
 mount -t tmpfs overlay /mnt/overlay
 mkdir -p /mnt/overlay/data
 
+echo "Ready to setup overlay"
+#sleep 5
+#/bin/sh
+
 if grep -q aufs /proc/filesystems ; then
   echo "Using aufs to remap root"
-  mount -n -t aufs -o dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro aufs-root ${rootmnt}
+  mount -n -t aufs -o noxino,noatime,dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro aufs-root ${rootmnt}
 else
   echo "Using overlay to remap root"
   mkdir -p /mnt/overlay/work
@@ -143,7 +147,7 @@ fi
 mount -n -o move /dev ${rootmnt}/dev
 mount -n -o move /sys ${rootmnt}/sys
 mount -n -o move /proc ${rootmnt}/proc
-mount -t 9p -o trans=virtio home ${rootmnt}/home
+mount -t 9p -o trans=virtio,version=9p2000.u home ${rootmnt}/home
 mount -t tmpfs none ${rootmnt}/root
 mount -t tmpfs none ${rootmnt}/tmp
 mount -t tmpfs none ${rootmnt}/run
@@ -184,6 +188,11 @@ sed -i -e '/\/sbin\/.*getty/d' ${rootmnt}/etc/inittab
 echo "1:2345:respawn:/sbin/agetty -n -l \${shell} -o '-l' tty1 38400 linux" >>${rootmnt}/etc/inittab
 echo "2:23:respawn:/sbin/agetty -n -l \${shell} -o '-l' tty2 38400 linux" >>${rootmnt}/etc/inittab
 echo "T0:23:respawn:/sbin/agetty -n -l \${shell} -o '-l' -L ttyS0 9600 xterm" >>${rootmnt}/etc/inittab
+
+cd ${rootmnt}
+echo "Ready to proceed by pivot_root"
+#sleep 5
+#/bin/sh
 
 exec switch_root ${rootmnt} /sbin/init
 EOF
