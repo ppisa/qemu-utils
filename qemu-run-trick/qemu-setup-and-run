@@ -48,9 +48,8 @@ function deep_copy()
 
   while true ; do
     mkdir -p ${tgt_dir}/$(dirname ${src}) || return 1
-    cp -av ${src} ${tgt_dir}/${src#/} || \
     cp -v ${src} ${tgt_dir}/${src#/} || return 1
-
+    cp -auv ${src} ${tgt_dir}/${src#/}
 
     l=$(readlink ${src})
     if [ -z "$l" ] ; then
@@ -210,7 +209,7 @@ echo "Ready to proceed by pivot_root"
 #mkdir -p ${rootmnt}/overlay/pivot
 #pivot_root . overlay/pivot
 #exec chroot . sbin/init
-exec switch_root ${rootmnt} /sbin/init
+exec \${BINPR}switch_root ${rootmnt} /sbin/init
 EOF
 
   ) >${INITRD_DIR_ABS}/init
