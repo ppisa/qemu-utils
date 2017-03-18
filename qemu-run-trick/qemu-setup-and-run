@@ -243,13 +243,14 @@ function build_initrd_cpio()
 
 function run_virt_system()
 {
-  $QEMU -enable-kvm -kernel ${KERNEL_IMAGE} \
+  $QEMU ${QEMU_KVM_ENABLE} \
+        -kernel ${KERNEL_IMAGE} \
         -initrd ${RAMDISK_ARCHIVE} ${QEMU_MEMORY} \
         -virtfs local,path=/,security_model=none,mount_tag=root \
         -virtfs local,path=/home,security_model=none,mount_tag=home \
         -net nic,macaddr=be:be:be:10:00:01,model=virtio,vlan=0 \
         -net user,vlan=0 \
-        ${QEMU_KVM_ENABLE} ${QEMU_OUTPUT}
+        ${QEMU_OUTPUT}
 
 #     -chardev can,id=canbus0,port=can0
 #     -device pci-can,chardev=canbus0,model=SJA1000
