@@ -48,7 +48,9 @@ function deep_copy()
 
   while true ; do
     mkdir -p ${tgt_dir}/$(dirname ${src}) || return 1
-    cp -av ${src} ${tgt_dir}/${src#/} || return 1
+    cp -av ${src} ${tgt_dir}/${src#/} || \
+    cp -v ${src} ${tgt_dir}/${src#/} || return 1
+
 
     l=$(readlink ${src})
     if [ -z "$l" ] ; then
