@@ -194,6 +194,9 @@ echo "Ready to proceed by pivot_root"
 #sleep 5
 #/bin/sh
 
+#mkdir -p ${rootmnt}/overlay/pivot
+#pivot_root . overlay/pivot
+#exec chroot . sbin/init
 exec switch_root ${rootmnt} /sbin/init
 EOF
 
