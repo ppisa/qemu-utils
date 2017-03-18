@@ -110,28 +110,39 @@ function setup_initrd_content()
 
     cat <<EOF
 echo "Starting QEMU trick"
-mount -t proc none /proc
-mount -t sysfs none /sys
-mount -t tmpfs none /dev
-depmod
+if mount -t proc none /proc ; then
+  echo "mount works directly"
+  BINPR=""
+else
+  echo "trying busybox mount"
+  BINPR="/bin/busybox "
+  if ! \${BINPR}mount -t proc none /proc ; then
+    echo "mounting proc failed, cannot continue"
+    sleep 10
+    exit 1
+  fi
+fi
+\${BINPR}mount -t sysfs none /sys
+\${BINPR}mount -t tmpfs none /dev
+\${BINPR}depmod
 EOF
     for m in ${MODULES_LIST} ; do
       echo modprobe $m
     done
     cat <<EOF
-mdev -s
+\${BINPR}mdev -s
 if [ -e /bin/resize ] ; then
-  mv /dev/tty /dev/tty-backup
-  ln -s /dev/console /dev/tty
+  \${BINPR}mv /dev/tty /dev/tty-backup
+  \${BINPR}ln -s /dev/console /dev/tty
   /bin/resize >/tmp/term-size
   . /tmp/term-size
-  stty cols \$COLUMNS rows \$LINES
-  rm -f /dev/tty
-  mv /dev/tty-backup /dev/tty
+  \${BINPR}stty cols \$COLUMNS rows \$LINES
+  \${BINPR}rm -f /dev/tty
+  \${BINPR}mv /dev/tty-backup /dev/tty
 fi
-mount -t 9p -o ro,trans=virtio,version=9p2000.u root /mnt/rootbase
-mount -t tmpfs overlay /mnt/overlay
-mkdir -p /mnt/overlay/data
+\${BINPR}mount -t 9p -o ro,trans=virtio,version=9p2000.u root /mnt/rootbase
+\${BINPR}mount -t tmpfs overlay /mnt/overlay
+\${BINPR}mkdir -p /mnt/overlay/data
 
 echo "Ready to setup overlay"
 #sleep 5
@@ -139,38 +150,38 @@ echo "Ready to setup overlay"
 
 if grep -q aufs /proc/filesystems ; then
   echo "Using aufs to remap root"
-  mount -n -t aufs -o noxino,noatime,dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro aufs-root ${rootmnt}
+  \${BINPR}mount -n -t aufs -o noxino,noatime,dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro aufs-root ${rootmnt}
 else
   echo "Using overlay to remap root"
-  mkdir -p /mnt/overlay/work
-  mount -n -t overlay -o upperdir=/mnt/overlay/data,workdir=/mnt/overlay/work,lowerdir=/mnt/rootbase overlay-root ${rootmnt}
+  \${BINPR}mkdir -p /mnt/overlay/work
+  \${BINPR}mount -n -t overlay -o upperdir=/mnt/overlay/data,workdir=/mnt/overlay/work,lowerdir=/mnt/rootbase overlay-root ${rootmnt}
 fi
 
-mount -n -o move /dev ${rootmnt}/dev
-mount -n -o move /sys ${rootmnt}/sys
-mount -n -o move /proc ${rootmnt}/proc
-mount -t 9p -o trans=virtio,version=9p2000.u home ${rootmnt}/home
-mount -t tmpfs none ${rootmnt}/root
-mount -t tmpfs none ${rootmnt}/tmp
-mount -t tmpfs none ${rootmnt}/run
-mount -t tmpfs none ${rootmnt}/var/log
-mount -t tmpfs none ${rootmnt}/var/tmp
+\${BINPR}mount -n -o move /dev ${rootmnt}/dev
+\${BINPR}mount -n -o move /sys ${rootmnt}/sys
+\${BINPR}mount -n -o move /proc ${rootmnt}/proc
+\${BINPR}mount -t 9p -o trans=virtio,version=9p2000.u home ${rootmnt}/home
+\${BINPR}mount -t tmpfs none ${rootmnt}/root
+\${BINPR}mount -t tmpfs none ${rootmnt}/tmp
+\${BINPR}mount -t tmpfs none ${rootmnt}/run
+\${BINPR}mount -t tmpfs none ${rootmnt}/var/log
+\${BINPR}mount -t tmpfs none ${rootmnt}/var/tmp
 
-rm ${rootmnt}/var/lib/urandom/random-seed 
-rm -rf ${rootmnt}/etc/shadow
+\${BINPR}rm -f ${rootmnt}/var/lib/urandom/random-seed
+\${BINPR}rm -rf ${rootmnt}/etc/shadow
 echo >${rootmnt}/etc/shadow
-rm -rf ${rootmnt}/etc/ssh
-mkdir ${rootmnt}/etc/ssh
+\${BINPR}rm -rf ${rootmnt}/etc/ssh
+\${BINPR}mkdir ${rootmnt}/etc/ssh
 
-rm -f ${rootmnt}/etc/rc2.d/* ${rootmnt}/etc/rc3.d/* ${rootmnt}/etc/rc4.d/* ${rootmnt}/etc/rc5.d/*
+\${BINPR}rm -f ${rootmnt}/etc/rc2.d/* ${rootmnt}/etc/rc3.d/* ${rootmnt}/etc/rc4.d/* ${rootmnt}/etc/rc5.d/*
 
-rm -rf ${rootmnt}/etc/fstab.d ${rootmnt}/etc/fstab
+\${BINPR}rm -rf ${rootmnt}/etc/fstab.d ${rootmnt}/etc/fstab
 echo >${rootmnt}/etc/fstab
 
-rm -rf ${rootmnt}/var/lib/dpkg/lock ${rootmnt}/var/lib/apt/lists/lock ${rootmnt}/var/cache/apt/archives/lock
-rm -rf ${rootmnt}/etc/apt/apt.conf.d/*etckeeper ${rootmnt}/var/lib/dpkg/triggers/Lock
+\${BINPR}rm -rf ${rootmnt}/var/lib/dpkg/lock ${rootmnt}/var/lib/apt/lists/lock ${rootmnt}/var/cache/apt/archives/lock
+\${BINPR}rm -rf ${rootmnt}/etc/apt/apt.conf.d/*etckeeper ${rootmnt}/var/lib/dpkg/triggers/Lock
 
-rm -rf ${rootmnt}/etc/network/interfaces.d ${rootmnt}/etc/network/interfaces
+\${BINPR}rm -rf ${rootmnt}/etc/network/interfaces.d ${rootmnt}/etc/network/interfaces
 echo "auto lo eth0" >${rootmnt}/etc/network/interfaces
 echo "iface lo inet loopback" >>${rootmnt}/etc/network/interfaces
 echo "iface eth0 inet dhcp" >>${rootmnt}/etc/network/interfaces
@@ -181,9 +192,9 @@ else
   shell=/bin/sh
 fi
 
-mv ${rootmnt}/etc/inittab ${rootmnt}/etc/inittab.orig
-cp ${rootmnt}/etc/inittab.orig ${rootmnt}/etc/inittab
-sed -i -e '/\/sbin\/.*getty/d' ${rootmnt}/etc/inittab
+\${BINPR}mv ${rootmnt}/etc/inittab ${rootmnt}/etc/inittab.orig
+\${BINPR}cp ${rootmnt}/etc/inittab.orig ${rootmnt}/etc/inittab
+\${BINPR}sed -i -e '/\/sbin\/.*getty/d' ${rootmnt}/etc/inittab
 #echo "1:2345:respawn:/bin/sh" >>${rootmnt}/etc/inittab
 #echo "T0:1234:respawn:/bin/sh" >>${rootmnt}/etc/inittab
 
