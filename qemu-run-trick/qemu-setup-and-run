@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# QEMU trick to dive user in his own hoe environment
+# QEMU trick to dive user in his own home environment
 # as root in a virualized shadow of his own system
 #
 # (C) 2013 Pavel Pisa <pisa@cmp.felk.cvut.cz>
