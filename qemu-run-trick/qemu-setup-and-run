@@ -32,7 +32,7 @@ MODULES_LIST="virtio virtio_ring virtio_pci virtio_net virtio_net fscache 9pnet 
 QEMU_MEMORY="-m 1024"
 QEMU_KVM_ENABLE="-enable-kvm"
 #QEMU_OUTPUT="-vga cirrus -serial null"
-QEMU_OUTPUT="-nographic -append console=ttyS0"
+QEMU_OUTPUT="-nographic -serial mon:stdio -append console=ttyS0"
 
 INITRD_DIR_ABS=$(readlink -f ${INITRD_DIR})
 
