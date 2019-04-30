@@ -33,6 +33,7 @@ QEMU_MEMORY="-m 1024"
 QEMU_KVM_ENABLE="-enable-kvm"
 #QEMU_OUTPUT="-vga cirrus -serial null"
 QEMU_OUTPUT="-nographic -serial mon:stdio -append console=ttyS0"
+#QEMU_OUTPUT="-vga cirrus -serial mon:stdio -append console=ttyS0"
 
 INITRD_DIR_ABS=$(readlink -f ${INITRD_DIR})
 
@@ -103,8 +104,11 @@ function setup_initrd_content()
 
   (
     echo '#!/bin/sh'
+
+    echo "BINPR=\"/bin/busybox \""
+
     for d in $root_dir_list ; do
-       echo "mkdir -p $d"
+       echo "\${BINPR}mkdir -p $d"
     done
 
     cat <<EOF
@@ -126,7 +130,7 @@ fi
 \${BINPR}depmod
 EOF
     for m in ${MODULES_LIST} ; do
-      echo modprobe $m
+      echo "\${BINPR}modprobe $m"
     done
     cat <<EOF
 \${BINPR}mdev -s
@@ -147,7 +151,7 @@ echo "Ready to setup overlay"
 #sleep 5
 #/bin/sh
 
-if grep -q aufs /proc/filesystems ; then
+if false ; then
   echo "Using aufs to remap root"
   \${BINPR}mount -n -t aufs -o noxino,noatime,dirs=/mnt/overlay/data=rw:/mnt/rootbase=ro aufs-root ${rootmnt}
 else
@@ -191,15 +195,30 @@ else
   shell=/bin/sh
 fi
 
-\${BINPR}mv ${rootmnt}/etc/inittab ${rootmnt}/etc/inittab.orig
-\${BINPR}cp ${rootmnt}/etc/inittab.orig ${rootmnt}/etc/inittab
-\${BINPR}sed -i -e '/\/sbin\/.*getty/d' ${rootmnt}/etc/inittab
-#echo "1:2345:respawn:/bin/sh" >>${rootmnt}/etc/inittab
-#echo "T0:1234:respawn:/bin/sh" >>${rootmnt}/etc/inittab
+if [ -e ${rootmnt}/etc/inittab ] ; then
+  \${BINPR}mv ${rootmnt}/etc/inittab ${rootmnt}/etc/inittab.orig
+  \${BINPR}cp ${rootmnt}/etc/inittab.orig ${rootmnt}/etc/inittab
+  \${BINPR}sed -i -e '/\/sbin\/.*getty/d' ${rootmnt}/etc/inittab
+  #echo "1:2345:respawn:/bin/sh" >>${rootmnt}/etc/inittab
+  #echo "T0:1234:respawn:/bin/sh" >>${rootmnt}/etc/inittab
 
-echo "1:2345:respawn:/sbin/agetty -n -l \${shell} -o '-l' tty1 38400 linux" >>${rootmnt}/etc/inittab
-echo "2:23:respawn:/sbin/agetty -n -l \${shell} -o '-l' tty2 38400 linux" >>${rootmnt}/etc/inittab
-echo "T0:23:respawn:/sbin/agetty -n -l \${shell} -o '-l' -L ttyS0 9600 xterm" >>${rootmnt}/etc/inittab
+  echo "1:2345:respawn:/sbin/agetty -n -l \${shell} -o '-l' tty1 38400 linux" >>${rootmnt}/etc/inittab
+  echo "2:23:respawn:/sbin/agetty -n -l \${shell} -o '-l' tty2 38400 linux" >>${rootmnt}/etc/inittab
+  echo "T0:23:respawn:/sbin/agetty -n -l \${shell} -o '-l' -L ttyS0 9600 xterm" >>${rootmnt}/etc/inittab
+  echo "S0:23:respawn:/sbin/agetty -n -l \${shell} -o '-l' -L ttyS0 9600 xterm" >>${rootmnt}/etc/inittab
+else
+  \${BINPR}chroot ${rootmnt} /usr/bin/passwd -d root
+  #for s in getty serial-getty ; do
+  #  \${BINPR}mv ${rootmnt}/lib/systemd/system/\${s}@.service ${rootmnt}/lib/systemd/system/\${s}-orig@.service
+  #  \${BINPR}cat ${rootmnt}/lib/systemd/system/\${s}-orig@.service | \
+  #  \${BINPR}sed -e 's#/sbin/agetty #/sbin/agetty -n -l '"\${shell}"' -o "-l" #' \
+  #     > ${rootmnt}/lib/systemd/system/\${s}@.service
+  #  #             -e 's#Type=idle#Type=simple#' \
+  #  #\${BINPR}sed -e 's#/sbin/agetty #/sbin/agetty --autologin root #' > ${rootmnt}/lib/systemd/system/getty@.service
+  #done
+  \${BINPR}rm -f ${rootmnt}/etc/systemd/system/getty.target.wants/getty@ttyS0.service
+  \${BINPR}ln -s /lib/systemd/system/getty@.service ${rootmnt}/etc/systemd/system/getty.target.wants/getty@ttyS0.service
+fi
 
 cd ${rootmnt}
 echo "Ready to proceed by pivot_root"
@@ -210,6 +229,7 @@ echo "Ready to proceed by pivot_root"
 #pivot_root . overlay/pivot
 #exec chroot . sbin/init
 exec \${BINPR}switch_root ${rootmnt} /sbin/init
+#exec \${BINPR}switch_root ${rootmnt} /bin/sh
 EOF
 
   ) >${INITRD_DIR_ABS}/init
