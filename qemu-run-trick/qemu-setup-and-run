@@ -280,8 +280,7 @@ function run_virt_system()
         -initrd ${RAMDISK_ARCHIVE} ${QEMU_MEMORY} \
         -virtfs local,path=/,security_model=none,mount_tag=root \
         -virtfs local,path=/home,security_model=none,mount_tag=home \
-        -net nic,macaddr=be:be:be:10:00:01,model=virtio,vlan=0 \
-        -net user,vlan=0 \
+        -nic user,model=virtio,mac=be:be:be:10:00:01 \
         ${QEMU_OUTPUT}
 
 #     -chardev can,id=canbus0,port=can0
