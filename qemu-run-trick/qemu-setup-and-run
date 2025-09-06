@@ -89,7 +89,10 @@ function setup_initrd_content()
 
 
   for m in ${MODULES_LIST} ; do
-    mf=$(find /lib/modules/${KERNEL_VERSION} -name ${m}.ko )
+    mf=$(find /lib/modules/${KERNEL_VERSION} -name "${m}.ko" | head -n 1)
+    if [ -z "${mf}" ] ; then
+      mf=$(find /lib/modules/${KERNEL_VERSION} -name "${m}.ko.?z" | head -n 1)
+    fi
     if [ -n "${mf}" ] ; then
       mkdir -p "${INITRD_DIR_ABS}/$(dirname ${mf})"
       cp -a "${mf}" "${INITRD_DIR_ABS}/${mf#/}"
